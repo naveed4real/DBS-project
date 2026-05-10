@@ -51,8 +51,8 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         .btn-primary { background: linear-gradient(135deg, #4c6ef5, #3b5bdb); transition: all 0.2s ease; }
         .btn-primary:hover { background: linear-gradient(135deg, #5c7cfa, #4263eb); transform: translateY(-1px); box-shadow: 0 4px 15px rgba(76,110,245,0.4); }
         .gradient-hero { background: linear-gradient(135deg, #1a1c2e 0%, #16213e 50%, #0f3460 100%); }
-        .dropdown:hover .dropdown-menu { display: block; }
         .dropdown-menu { display: none; animation: fadeIn 0.15s ease; }
+        .dropdown-menu.open { display: block; }
         @keyframes fadeIn { from { opacity:0; transform: translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         .badge-cart { animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.1); } }
@@ -121,19 +121,34 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
                 <!-- Auth -->
                 <?php if (isset($_SESSION['customer_id'])): ?>
-                    <div class="relative dropdown hidden md:block">
-                        <button class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-brand-600 transition px-2 py-1 rounded-lg hover:bg-gray-100">
+                    <div class="relative hidden md:block" id="userDropdownWrap">
+                        <button id="userDropdownBtn" class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-brand-600 transition px-2 py-1 rounded-lg hover:bg-gray-100">
                             <div class="w-8 h-8 bg-gradient-to-br from-brand-400 to-brand-700 rounded-full flex items-center justify-center text-white font-bold text-xs">
                                 <?= strtoupper(substr($_SESSION['customer_name'] ?? 'U', 0, 1)) ?>
                             </div>
                             <?= htmlspecialchars($_SESSION['customer_name'] ?? 'Account') ?>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                         </button>
-                        <div class="dropdown-menu absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                        <div id="userDropdownMenu" class="dropdown-menu absolute right-0 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50" style="top:100%;">
                             <a href="/BIA PROJECT/orders.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700">My Orders</a>
                             <a href="/BIA PROJECT/logout.php" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">Logout</a>
                         </div>
                     </div>
+                <script>
+                (function(){
+                    var wrap = document.getElementById('userDropdownWrap');
+                    var menu = document.getElementById('userDropdownMenu');
+                    var timer;
+                    if(!wrap) return;
+                    wrap.addEventListener('mouseenter', function(){
+                        clearTimeout(timer);
+                        menu.classList.add('open');
+                    });
+                    wrap.addEventListener('mouseleave', function(){
+                        timer = setTimeout(function(){ menu.classList.remove('open'); }, 150);
+                    });
+                })();
+                </script>
                 <?php else: ?>
                     <a href="/BIA PROJECT/login.php" class="hidden md:inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-brand-600 transition px-3 py-2 rounded-lg hover:bg-gray-100">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
