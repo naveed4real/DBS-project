@@ -106,6 +106,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg = "✅ Stock updated.";
         $tab = 'products';
     }
+    // Delete Product
+    if (isset($_POST['delete_product'])) {
+        $pid = (int)$_POST['product_id'];
+        // Remove from carts and order items first (FK safety)
+        mysqli_query($conn, "DELETE FROM Cart_Items WHERE product_id=$pid");
+        mysqli_query($conn, "DELETE FROM Supplier_Order_Items WHERE product_id=$pid");
+        // Get product name for message
+        $prow = mysqli_fetch_assoc(mysqli_query($conn, "SELECT product_name FROM Product WHERE product_id=$pid"));
+        $pname = $prow['product_name'] ?? "#$pid";
+        if (mysqli_query($conn, "DELETE FROM Product WHERE product_id=$pid")) {
+            $msg = "🗑️ Product '$pname' deleted successfully.";
+        } else {
+            $msg = "❌ Could not delete: " . mysqli_error($conn);
+        }
+        $tab = 'products';
+    }
     // Update Order Status
     if (isset($_POST['update_order'])) {
         $oid    = (int)$_POST['order_id'];
@@ -246,7 +262,7 @@ $statusColors = ['Pending'=>'bg-yellow-100 text-yellow-800','Processing'=>'bg-bl
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
-                <tr><th class="px-4 py-3 text-left">ID</th><th class="px-4 py-3 text-left">Name</th><th class="px-4 py-3 text-left">Category</th><th class="px-4 py-3 text-left">Price</th><th class="px-4 py-3 text-left">Stock</th><th class="px-4 py-3 text-left">Update Stock</th></tr>
+                <tr><th class="px-4 py-3 text-left">ID</th><th class="px-4 py-3 text-left">Name</th><th class="px-4 py-3 text-left">Category</th><th class="px-4 py-3 text-left">Price</th><th class="px-4 py-3 text-left">Stock</th><th class="px-4 py-3 text-left">Update Stock</th><th class="px-4 py-3 text-left">Delete</th></tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
                 <?php foreach ($products as $p): ?>
@@ -267,9 +283,19 @@ $statusColors = ['Pending'=>'bg-yellow-100 text-yellow-800','Processing'=>'bg-bl
                             <button type="submit" name="update_stock" class="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-brand-700 transition">Save</button>
                         </form>
                     </td>
+                    <td class="px-4 py-3">
+                        <form method="POST" onsubmit="return confirm('⚠️ Delete \'<?= htmlspecialchars(addslashes($p['product_name'])) ?>\' permanently? This cannot be undone!')">
+                            <input type="hidden" name="product_id" value="<?= $p['product_id'] ?>">
+                            <button type="submit" name="delete_product"
+                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                Delete
+                            </button>
+                        </form>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
-                <?php if (empty($products)): ?><tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No products found.</td></tr><?php endif; ?>
+                <?php if (empty($products)): ?><tr><td colspan="7" class="px-6 py-8 text-center text-gray-400">No products found.</td></tr><?php endif; ?>
             </tbody>
         </table>
     </div>
