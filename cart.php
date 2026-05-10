@@ -1,6 +1,12 @@
 <?php
 require_once 'config.php';
 
+// ── Login Guard ────────────────────────────────────────────────────────────────
+if (!isset($_SESSION['customer_id'])) {
+    $_SESSION['flash'] = ['type' => 'error', 'msg' => '🔒 Please login first to use the cart.'];
+    header('Location: /BIA PROJECT/login.php'); exit;
+}
+
 // ── Handle Actions ─────────────────────────────────────────────────────────────
 $action   = $_POST['action'] ?? $_GET['action'] ?? '';
 $redirect = $_POST['redirect'] ?? $_GET['redirect'] ?? '/BIA PROJECT/cart.php';

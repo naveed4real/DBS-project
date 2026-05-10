@@ -1,8 +1,15 @@
 <?php
 require_once 'config.php';
 
+// ── Login Guard ────────────────────────────────────────────────────────────────
+if (!isset($_SESSION['customer_id'])) {
+    $_SESSION['flash'] = ['type' => 'error', 'msg' => '🔒 Please login first to checkout.'];
+    header('Location: /BIA PROJECT/login.php'); exit;
+}
+
 $cart = $_SESSION['cart'] ?? [];
 if (empty($cart)) { header('Location: /BIA PROJECT/cart.php'); exit; }
+
 
 $errors   = [];
 $success  = false;
