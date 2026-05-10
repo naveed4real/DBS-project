@@ -96,7 +96,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     </div>
                 </div>
 
-                <a href="/BIA PROJECT/admin.php" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Admin</a>
+                <!-- Admin link intentionally hidden from navbar -->
             </div>
 
             <!-- Right Side -->

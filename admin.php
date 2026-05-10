@@ -33,17 +33,17 @@ if (!isset($_SESSION['is_admin'])) {
         <div class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                <input type="text" name="admin_user" value="admin" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                <input type="text" name="admin_user" placeholder="Enter username" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input type="password" name="admin_pass" value="admin123" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                <input type="password" name="admin_pass" placeholder="Enter password" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
             </div>
             <button type="submit" name="admin_login" class="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white py-3 rounded-xl font-bold hover:opacity-90 transition">
                 Enter Dashboard
             </button>
         </div>
-        <p class="text-xs text-gray-400 text-center mt-4">Default: admin / admin123</p>
+
     </form>
 </div></body></html><?php
         exit;
