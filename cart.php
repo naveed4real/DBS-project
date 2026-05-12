@@ -7,17 +7,81 @@ if (!isset($_SESSION['customer_id'])) {
     header('Location: /BIA PROJECT/login.php'); exit;
 }
 
+$customerId = (int)$_SESSION['customer_id'];
+
+// ── Helper: Get or Create a Cart row for this customer ─────────────────────────
+function getOrCreateCart($conn, $customerId) {
+    $res = mysqli_query($conn, "SELECT cart_id FROM Cart WHERE customer_id=$customerId LIMIT 1");
+    $row = mysqli_fetch_assoc($res);
+    if ($row) return (int)$row['cart_id'];
+
+    // Create new cart
+    $nextId = (int)mysqli_fetch_assoc(mysqli_query($conn,
+        "SELECT COALESCE(MAX(cart_id),0)+1 AS nid FROM Cart"))['nid'];
+    mysqli_query($conn,
+        "INSERT INTO Cart (cart_id, customer_id, created_at)
+         VALUES ($nextId, $customerId, NOW())");
+    return $nextId;
+}
+
+// ── Helper: Sync DB cart → SESSION ────────────────────────────────────────────
+function loadCartFromDB($conn, $customerId) {
+    $res = mysqli_query($conn,
+        "SELECT ci.product_id, ci.quantity, p.product_name, p.price
+         FROM Cart c
+         JOIN Cart_Items ci ON ci.cart_id = c.cart_id
+         JOIN Product p ON p.product_id = ci.product_id
+         WHERE c.customer_id = $customerId");
+    $cart = [];
+    while ($row = mysqli_fetch_assoc($res)) {
+        $pid = (int)$row['product_id'];
+        $cart[$pid] = [
+            'product_id' => $pid,
+            'name'       => $row['product_name'],
+            'price'      => (float)$row['price'],
+            'quantity'   => (int)$row['quantity'],
+        ];
+    }
+    return $cart;
+}
+
 // ── Handle Actions ─────────────────────────────────────────────────────────────
 $action   = $_POST['action'] ?? $_GET['action'] ?? '';
 $redirect = $_POST['redirect'] ?? $_GET['redirect'] ?? '/BIA PROJECT/cart.php';
 
+// ── ADD ────────────────────────────────────────────────────────────────────────
 if ($action === 'add' && isset($_POST['product_id'])) {
     $pid = (int)$_POST['product_id'];
     $qty = max(1, (int)($_POST['quantity'] ?? 1));
 
     // Validate stock
-    $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT stock_quantity, product_name, price FROM Product WHERE product_id=$pid"));
+    $row = mysqli_fetch_assoc(mysqli_query($conn,
+        "SELECT stock_quantity, product_name, price FROM Product WHERE product_id=$pid"));
+
     if ($row && $row['stock_quantity'] >= $qty) {
+        $cartId = getOrCreateCart($conn, $customerId);
+
+        // Check if this product already exists in Cart_Items
+        $existing = mysqli_fetch_assoc(mysqli_query($conn,
+            "SELECT cart_item_id, quantity FROM Cart_Items
+             WHERE cart_id=$cartId AND product_id=$pid LIMIT 1"));
+
+        if ($existing) {
+            // UPDATE quantity
+            $newQty = (int)$existing['quantity'] + $qty;
+            mysqli_query($conn,
+                "UPDATE Cart_Items SET quantity=$newQty
+                 WHERE cart_item_id={$existing['cart_item_id']}");
+        } else {
+            // INSERT new item
+            $nextItemId = (int)mysqli_fetch_assoc(mysqli_query($conn,
+                "SELECT COALESCE(MAX(cart_item_id),0)+1 AS nid FROM Cart_Items"))['nid'];
+            mysqli_query($conn,
+                "INSERT INTO Cart_Items (cart_item_id, cart_id, product_id, quantity)
+                 VALUES ($nextItemId, $cartId, $pid, $qty)");
+        }
+
+        // Also sync to session
         if (isset($_SESSION['cart'][$pid])) {
             $_SESSION['cart'][$pid]['quantity'] += $qty;
         } else {
@@ -28,6 +92,7 @@ if ($action === 'add' && isset($_POST['product_id'])) {
                 'quantity'   => $qty,
             ];
         }
+
         $_SESSION['flash'] = ['type' => 'success', 'msg' => "'{$row['product_name']}' added to cart!"];
     } else {
         $_SESSION['flash'] = ['type' => 'error', 'msg' => 'Sorry, not enough stock available.'];
@@ -35,12 +100,29 @@ if ($action === 'add' && isset($_POST['product_id'])) {
     header('Location: ' . $redirect); exit;
 }
 
+// ── UPDATE ─────────────────────────────────────────────────────────────────────
 if ($action === 'update' && isset($_POST['product_id'])) {
     $pid = (int)$_POST['product_id'];
     $qty = (int)$_POST['quantity'];
+
+    $cartId = getOrCreateCart($conn, $customerId);
+
     if ($qty <= 0) {
+        // Remove from DB
+        mysqli_query($conn,
+            "DELETE FROM Cart_Items WHERE cart_id=$cartId AND product_id=$pid");
         unset($_SESSION['cart'][$pid]);
     } else {
+        // Update in DB
+        $existing = mysqli_fetch_assoc(mysqli_query($conn,
+            "SELECT cart_item_id FROM Cart_Items
+             WHERE cart_id=$cartId AND product_id=$pid LIMIT 1"));
+        if ($existing) {
+            mysqli_query($conn,
+                "UPDATE Cart_Items SET quantity=$qty
+                 WHERE cart_item_id={$existing['cart_item_id']}");
+        }
+        // Update session
         if (isset($_SESSION['cart'][$pid])) {
             $_SESSION['cart'][$pid]['quantity'] = $qty;
         }
@@ -48,23 +130,43 @@ if ($action === 'update' && isset($_POST['product_id'])) {
     header('Location: /BIA PROJECT/cart.php'); exit;
 }
 
+// ── REMOVE ─────────────────────────────────────────────────────────────────────
 if ($action === 'remove') {
-    $pid = (int)($_GET['product_id'] ?? $_POST['product_id'] ?? 0);
+    $pid    = (int)($_GET['product_id'] ?? $_POST['product_id'] ?? 0);
+    $cartId = getOrCreateCart($conn, $customerId);
+
+    // Delete from DB
+    mysqli_query($conn,
+        "DELETE FROM Cart_Items WHERE cart_id=$cartId AND product_id=$pid");
+
+    // Delete from session
     unset($_SESSION['cart'][$pid]);
+
     $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Item removed from cart.'];
     header('Location: /BIA PROJECT/cart.php'); exit;
 }
 
+// ── CLEAR ──────────────────────────────────────────────────────────────────────
 if ($action === 'clear') {
+    $res = mysqli_query($conn,
+        "SELECT cart_id FROM Cart WHERE customer_id=$customerId LIMIT 1");
+    $cartRow = mysqli_fetch_assoc($res);
+    if ($cartRow) {
+        mysqli_query($conn,
+            "DELETE FROM Cart_Items WHERE cart_id={$cartRow['cart_id']}");
+    }
     $_SESSION['cart'] = [];
     header('Location: /BIA PROJECT/cart.php'); exit;
 }
+
+// ── On Page Load: always load cart fresh from DB ───────────────────────────────
+$_SESSION['cart'] = loadCartFromDB($conn, $customerId);
 
 // ── Render Cart Page ───────────────────────────────────────────────────────────
 $pageTitle = 'Shopping Cart';
 require_once 'includes/header.php';
 
-$cart  = $_SESSION['cart'] ?? [];
+$cart     = $_SESSION['cart'] ?? [];
 $subtotal = array_sum(array_map(fn($i) => $i['price'] * $i['quantity'], $cart));
 $shipping = $subtotal >= 50 ? 0 : 5.99;
 $total    = $subtotal + $shipping;

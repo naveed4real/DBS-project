@@ -80,21 +80,48 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <a href="/BIA PROJECT/index.php" class="px-3 py-2 rounded-lg text-sm font-medium <?= $currentPage === 'index.php' ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-100' ?> transition">Home</a>
 
                 <!-- Categories Dropdown -->
-                <div class="relative dropdown">
-                    <button class="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition flex items-center gap-1">
+                <div class="relative" id="catDropdownWrap">
+                    <button id="catDropdownBtn" class="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition flex items-center gap-1">
                         Categories
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        <svg class="w-4 h-4 transition-transform duration-200" id="catArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </button>
-                    <div class="dropdown-menu absolute left-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
-                        <a href="/BIA PROJECT/index.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 transition">🛍️ All Products</a>
+                    <div id="catDropdownMenu" class="dropdown-menu absolute left-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                        <a href="/BIA PROJECT/index.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 transition font-medium">🛍️ All Products</a>
                         <hr class="my-1 border-gray-100">
                         <?php foreach ($categories as $cat): ?>
-                            <a href="/BIA PROJECT/index.php?category=<?= $cat['category_id'] ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 transition">
+                            <a href="/BIA PROJECT/index.php?category=<?= $cat['category_id'] ?>"
+                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 transition
+                               <?= (!empty($_GET['category']) && (int)$_GET['category'] === (int)$cat['category_id']) ? 'bg-brand-50 text-brand-700 font-semibold' : '' ?>">
                                 <?= htmlspecialchars($cat['category_name']) ?>
                             </a>
                         <?php endforeach; ?>
                     </div>
                 </div>
+                <script>
+                (function(){
+                    var wrap  = document.getElementById('catDropdownWrap');
+                    var menu  = document.getElementById('catDropdownMenu');
+                    var arrow = document.getElementById('catArrow');
+                    var timer;
+                    if (!wrap) return;
+                    wrap.addEventListener('mouseenter', function(){
+                        clearTimeout(timer);
+                        menu.classList.add('open');
+                        arrow.style.transform = 'rotate(180deg)';
+                    });
+                    wrap.addEventListener('mouseleave', function(){
+                        timer = setTimeout(function(){
+                            menu.classList.remove('open');
+                            arrow.style.transform = 'rotate(0deg)';
+                        }, 150);
+                    });
+                    // Also support click (for touch/mobile)
+                    wrap.querySelector('button').addEventListener('click', function(){
+                        menu.classList.toggle('open');
+                        arrow.style.transform = menu.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+                    });
+                })();
+                </script>
 
                 <!-- Admin link intentionally hidden from navbar -->
             </div>
